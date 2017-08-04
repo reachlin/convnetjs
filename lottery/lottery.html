@@ -31,7 +31,7 @@ var net; // declared outside -> global variable in window scope
 function start() {
   var layer_defs = [];
   // input layer of size 1x1x2 (all volumes are 3D)
-  layer_defs.push({type:'input', out_sx:1, out_sy:1, out_depth:8});
+  layer_defs.push({type:'input', out_sx:1, out_sy:1, out_depth:7});
   // some fully connected layers
   layer_defs.push({type:'fc', num_neurons:20, activation:'relu'});
   layer_defs.push({type:'fc', num_neurons:20, activation:'relu'});
@@ -47,26 +47,46 @@ function start() {
   // line below will create a 1x1x2 volume and fill it with 0.5 and -1.3
   var trainer = new convnetjs.Trainer(net, {learning_rate:0.1, l2_decay:0.001});
   train_input.forEach(function(item, index) {
-    var p = new convnetjs.Vol(item);
+    var item_short = item.slice(0, -1);
+    var p = new convnetjs.Vol(item_short);
     trainer.train(p, 1);
-    make_negatives(item).forEach(function(item, index) {
-      var n = new convnetjs.Vol(item);
+    console.log('train: 1 '+index);
+    make_negatives(item_short).forEach(function(elem, num) {
+      var n = new convnetjs.Vol(elem);
       trainer.train(n, 0);
+      console.log('...train: 0 '+num);
     });
   });
 
-  test_input.forEach(function(item, index) {
-    var test = new convnetjs.Vol(item);
+  train_input.forEach(function(item, index) {
+    var test = new convnetjs.Vol(item.slice(0, -1));
     var probability_test = net.forward(test);
-    console.log(index+' probability that test is class 1: ' + probability_test.w);
+    console.log(index+' probability that test is class 0,1: ' + probability_test.w);
   });
 }
 
 function make_negatives(positive) {
-  var item = [0, 0, 0, 0, 0, 0, 0, 0];
+  //console.log('make_negatives: '+positive);
   var rtn = [];
-  item[0] = positive[0];
-  rtn.push(item);
+  full_red_balls.slice(0, 10).forEach(function(item, index) {
+    //console.log('red_balls: '+index);
+    var item_new = [0, 0, 0, 0, 0, 0, 0];
+    item_new[0] = positive[0];
+    var p_sort = positive.slice(1, -1).sort(function (a, b) {  return a - b;  });
+    var item_sort = item.sort(function (a, b) {  return a - b;  });
+    var identical = true;
+    item_sort.forEach(function(element, num) {
+      item_new[num+1] = element;
+      if (element != p_sort[num]) {
+        identical = false;
+      }
+    });
+    if (identical) {
+      //console.log('remove identical: '+item_sort);
+    } else {
+      rtn.push(item_new);
+    }
+  });
   return rtn;
 }
 
@@ -111,7 +131,7 @@ function k_combinations(set, k) {
 </script>
 </head>
  
-<body onload="start()">
-<div id="egdiv"></div>
+<body>
+<button id="egdiv" onclick='start()'>Start</button>
 </body>
 </html>
